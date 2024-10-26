@@ -2,9 +2,12 @@ import StreamView from "../components/StreamView";
 
   
 
-const creatorId="cb682c7a-4eeb-4dfe-80ec-444f05294631"; 
+const creatorId="8fc33fbd-2c3d-490d-a5d3-0d1127576be4"; 
 
-export default function Component() {
+
+
+export default async  function Component() {
+
 
   return <StreamView creatorId={creatorId} playVideo={true} />
 

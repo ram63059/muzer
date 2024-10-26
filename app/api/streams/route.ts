@@ -56,6 +56,7 @@ export async function POST(req:NextRequest){
              userId: data.creatorId,
              url: data.url,
              extractedId,
+             addedById: data.creatorId,
              type: "Youtube",
              title:res.title ?? "cant find video ",
              smallImg:( thumbnails.length>1 ? thumbnails[thumbnails.length-2].url :thumbnails[thumbnails.length -1].url) ?? "https://salonlfc.com/wp-content/uploads/2018/01/image-not-found-1-scaled.png",
@@ -70,6 +71,7 @@ export async function POST(req:NextRequest){
            upvotes:0
         })
     } catch (e) {
+        console.error("Error details:", e);
         return NextResponse.json({
             message:"error while adding a stream"
         },{

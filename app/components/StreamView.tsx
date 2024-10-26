@@ -46,7 +46,8 @@ export default function StreamView({
         playVideo:boolean;
  }) {
 
-  console.log(creatorId);
+  // console.log(creatorId); 
+
   const [inputLink, setInputLink] = useState("");
   const [queue, setQueue] = useState<Video[]>([]);
   const videoPlayerRef=useRef<HTMLDivElement>();
@@ -329,7 +330,7 @@ export default function StreamView({
                         {playVideo ? <>
 
                         
-                        {/*@ts-ignore */}
+                        {/* @ts-ignore */}
                           <div ref={videoPlayerRef} className="w-full"/>
                           {/* <iframe src={`https://www.youtube.com/embed/${currentVideo.extractedId}?autoplay=1`}
                           allow="autoplay"></iframe> */}
