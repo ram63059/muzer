@@ -9,12 +9,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User{
+model User {
   id        String   @id @default(uuid())
   email     String   @unique
   provider  Provider
-  streams   Stream[]
+  streams   Stream[]  @relation("user")
   upvotes   Upvote[]
+  added     Stream[]  @relation("addedBy")
 
 }
 model Stream {
@@ -26,9 +27,14 @@ model Stream {
   smallImg     String  @default("")
   bigImg       String  @default("")
   active       Boolean    @default(true)
+  played       Boolean    @default(false)
+  playedTs     DateTime?
+  createAt     DateTime   @default(now())
   upvotes      Upvote[]
+  addedById    String
   userId       String
-  user         User    @relation(fields: [userId], references: [id])
+  user         User    @relation(fields: [userId], references: [id] ,name: "user")
+  addedBy      User    @relation(fields: [addedById], references: [id] , name: "addedBy")
   CurrentStream CurrentStream?
 }
 
@@ -44,7 +50,7 @@ model Upvote{
     userId    String
     streamId  String
     user      User  @relation(fields: [userId],references: [id])
-    stream    Stream @relation(fields: [streamId], references: [id])
+    stream    Stream @relation(fields: [streamId], references: [id] , onDelete: Cascade)
     @@unique([userId,streamId])
 }
 

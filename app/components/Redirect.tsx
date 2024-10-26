@@ -8,6 +8,7 @@ import { useEffect } from "react";
 export function Redirect(){
 
     const session=useSession();
+
     const router=useRouter();
 
     useEffect(()=>{

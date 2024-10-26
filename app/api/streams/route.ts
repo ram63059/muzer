@@ -14,6 +14,7 @@ const CreateStreamSchema=z.object({
     url : z.string()
 })
 
+const MAX_QUEUE_LEN=20;
 
 export async function POST(req:NextRequest){
     try {
@@ -35,7 +36,19 @@ export async function POST(req:NextRequest){
         const thumbnails= res.thumbnail.thumbnails;
         thumbnails.sort((a: {width:number}, b: {width:number})=> a.width < b.width ?-1:1);
         
-        console.log(data.creatorId);
+        const existingActiveStream= await prismaClient.stream.count({
+            where:{
+                userId:data.creatorId
+            }
+        })
+
+        if(existingActiveStream> MAX_QUEUE_LEN){
+            return NextResponse.json({
+                message:"Already at limit"
+            },{
+                status:411
+            })
+        }
 
        const stream= await prismaClient.stream.create({
 
@@ -96,7 +109,8 @@ export async function GET(req: NextRequest){
     }
     const [streams,activeStream]= await Promise.all([await prismaClient.stream.findMany({
         where:{
-            userId:creatorId
+            userId:creatorId,
+            played:false  
         },
         include:{
             _count:{

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
@@ -5,15 +6,18 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Play, Share2, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, Share2, ChevronDown, ChevronUp, Video,  } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import LiteYouTubeEmbed from "react-lite-youtube-embed";
 import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
 import { YT_REGEX } from "@/lib/utils";
 import "react-toastify/dist/ReactToastify.css";
 import Appbar from "./Appbar";
+
+import YouTubePlayer from "youtube-player";
+
 
 interface Video {
   id: string;
@@ -33,6 +37,7 @@ const REFRESH_INTERVAL_MS = 10 * 1000;
 
 // const creatorId="085b1a5d-5773-482a-944c-898e5992e049";
 
+
 export default function StreamView({ 
         creatorId,
         playVideo=false
@@ -40,17 +45,20 @@ export default function StreamView({
         creatorId: string;
         playVideo:boolean;
  }) {
+
+  console.log(creatorId);
   const [inputLink, setInputLink] = useState("");
   const [queue, setQueue] = useState<Video[]>([]);
-
+  const videoPlayerRef=useRef<HTMLDivElement>();
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
 
   const [loading, setLoading] = useState(false);
+  const [playNextLoader, setPlayNextLoader] = useState(false);
 
   async function refreshStreams() {
     try {
       const res = await fetch(`/api/streams/?creatorId=${creatorId}`, {
-        method: "GET",
+        // method: "GET",
         credentials: "include",
       });
 
@@ -60,7 +68,14 @@ export default function StreamView({
 
       const json = await res.json();
       setQueue( json.streams.sort((a: any, b: any) => (a.upvotes < b.upvotes ? 1 : -1)));
-      setCurrentVideo(json.activeStream);
+
+      setCurrentVideo(video => {
+
+        if(video?.id===json.activeStream?.stream?.id){
+          return video;
+          }
+        return json.activeStream.stream
+      });
 
     } catch (error) {
       console.error("Failed to fetch streams:", error);
@@ -70,8 +85,39 @@ export default function StreamView({
   useEffect(() => {
     refreshStreams();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const interval = setInterval(() => {}, REFRESH_INTERVAL_MS);
-  }, []);
+    const interval = setInterval(() => {
+      refreshStreams();
+    },
+     REFRESH_INTERVAL_MS);
+  }, [])
+
+  useEffect(()=>{
+
+    if(!videoPlayerRef.current || !currentVideo || !currentVideo?.extractedId){
+      return ;
+    }
+    
+    // eslint-disable-next-line prefer-const
+    let player=YouTubePlayer(videoPlayerRef.current);
+
+    player.loadVideoById(currentVideo.extractedId);
+
+    player.playVideo();
+   
+    function eventHandler(event:any){
+      if(event.data===0){
+        playNext();
+      }
+    };
+    player.on('stateChange',eventHandler);
+
+    return()=>{
+      
+      player.destroy();
+    }
+   
+  },[currentVideo ,videoPlayerRef])
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,10 +174,23 @@ export default function StreamView({
     });
   };
 
-  const playNext = () => {
+  const playNext = async () => {
     if (queue.length > 0) {
-      setCurrentVideo(queue[0]);
-      setQueue(queue.slice(1));
+      try{
+        setPlayNextLoader(true);
+        const data=await fetch('/api/streams/next', {
+          method:"GET",
+        })
+        const json= await data.json();
+  
+        setCurrentVideo(json.stream);
+        setQueue(q=>q.filter(x => x.id !== json.stream?.id))
+      } catch(e){
+
+      }
+
+      setPlayNextLoader(false)
+      
     }
   };
 
@@ -170,10 +229,16 @@ export default function StreamView({
     <div className="flex flex-col min-h-screen bg-[rgb(10,10,10)] text-gray-200">
       <Appbar />
       <div className="flex justify-center">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-5 pt-8 max-w-screen-xl">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-5 w-screen pt-8 max-w-screen-xl">
           <div className="col-span-3">
             <div className="space-y-4 ">
               <h2 className="text-2xl font-bold text-white"> Upcoming Songs</h2>
+              {queue.length===0  && 
+               <Card className="bg-gray-900 border-gray-800">
+                  <CardContent className="p-4">
+              <p className="text-center py-8 text-gray-400"> No videos in queue</p>
+              </CardContent>
+                </Card> }
               {queue.map((video) => (
                 <Card key={video.id} className="bg-gray-900 border-gray-800">
                   <CardContent className="p-4 flex items-center space-x-2 ">
@@ -260,18 +325,30 @@ export default function StreamView({
                 <Card className="bg-gray-900 border-gray-800">
                   <CardContent className="p-4">
                     {currentVideo ? (
-                      <>
-                        <Image
-                          src="/placeholder.svg?height=200&width=320"
-                          width={320}
-                          height={200}
-                          alt="Current Video"
-                          className="w-full h-72 object-cover rounded  "
-                        />
-                        <p className="mt-3 text-center font-semibold text-white ">
-                          {currentVideo.title}
-                        </p>
-                      </>
+                      <div>
+                        {playVideo ? <>
+
+                        
+                        {/*@ts-ignore */}
+                          <div ref={videoPlayerRef} className="w-full"/>
+                          {/* <iframe src={`https://www.youtube.com/embed/${currentVideo.extractedId}?autoplay=1`}
+                          allow="autoplay"></iframe> */}
+                        </> : 
+                         <>
+                         <Image
+                           src={currentVideo.bigImg}
+                           width={320}
+                           height={200}
+                           alt="Current Video"
+                           className="w-full h-72 object-cover rounded  "
+                         />
+                         <p className="mt-3 text-center font-semibold text-white ">
+                           {currentVideo.title}
+                         </p>
+                       </>}
+                      
+                     
+                      </div>
                     ) : (
                       <p className="text-center py-8 text-gray-400 ">
                         {" "}
@@ -282,9 +359,10 @@ export default function StreamView({
                 </Card>
                {playVideo && <Button
                   onClick={playNext}
+                  disabled={playNextLoader}
                   className="w-full bg-purple-700 hover:bg-purple-800 text-white "
                 >
-                  <Play className="mr-3 h-4 w-4" /> Play Next
+                  <Play className="mr-3 h-4 w-4" /> {playNextLoader ? "Loading...":"Play Next"}
                 </Button>}
               </div>
             </div>
